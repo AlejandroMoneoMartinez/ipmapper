@@ -1,0 +1,43 @@
+package com.safeline.ipmapper;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestTemplate;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+
+@SpringBootApplication
+public class IpmapperApplication implements CommandLineRunner {
+
+    public static void main(String[] args) {
+        new SpringApplicationBuilder(IpmapperApplication.class).headless(false).run(args);
+    }
+
+    @Bean
+    public RestTemplate restTemplate(RestTemplateBuilder builder) {
+        return builder.build();
+    }
+
+    @Override
+    public void run(String... args) {
+        EventQueue.invokeLater(() -> {
+            try {
+                JFrame jFrame = new JFrame();
+                jFrame.setContentPane(new Main().getContentPanel());
+                jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                jFrame.pack();
+                jFrame.setSize(600, 400);
+                jFrame.setVisible(true);
+                jFrame.setTitle("SURELINE IP MAPPER");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+}
