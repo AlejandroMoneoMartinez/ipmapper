@@ -31,6 +31,7 @@ public class Main extends JFrame implements ActionListener {
 
     public static final String COLOR_SECONDARY = "#888888";
     public static final String COLOR_SUCCESS = "#5fa125";
+    public static final String DEFAULT_SURELINE_IP = "192.168.2.10";
 
     private JPanel contentPane;
     private JLabel lbl1, lbl2, lbl3, lbl4, lblIp, lblFooter;
@@ -72,9 +73,9 @@ public class Main extends JFrame implements ActionListener {
         this.lbl3.setBounds(20, 350, 400, 30);
         this.contentPane.add(lbl3);
 
-        this.lbl3 = new JLabel("4. Visualice y gestione la unidad desde la IP asignada");
-        this.lbl3.setBounds(20, 400, 400, 30);
-        this.contentPane.add(lbl3);
+        this.lbl4 = new JLabel("4. Visualice y gestione la unidad desde la IP asignada");
+        this.lbl4.setBounds(20, 400, 400, 30);
+        this.contentPane.add(lbl4);
 
         this.lblIp = new JLabel("ASSIGNED IP:");
         this.lblIp.setForeground(Color.decode(COLOR_SUCCESS));
@@ -102,10 +103,9 @@ public class Main extends JFrame implements ActionListener {
         if (actionEvent.getSource() == this.btnSetIp) {
             try {
                 Process procIpConfig = Runtime.getRuntime().exec("ipconfig");
-                BufferedReader reader=new BufferedReader(new InputStreamReader(procIpConfig.getInputStream()));
+                BufferedReader reader = new BufferedReader(new InputStreamReader(procIpConfig.getInputStream()));
                 String line, ip = "", mask = "", gateway = "";
 
-                int i = 0;
                 while ((line = reader.readLine()) != null && ip.length() == 0){
                     if (StringUtils.containsIgnoreCase(line, "ipv4")) {
                         ip = line.split(" : ")[1];
@@ -116,7 +116,7 @@ public class Main extends JFrame implements ActionListener {
                     }
                 }
 
-                Process procRoute = Runtime.getRuntime().exec("route add 192.168.2.10 " + ip);
+                Process procRoute = Runtime.getRuntime().exec("route add " + DEFAULT_SURELINE_IP + " " + ip);
                 BufferedReader stdInput = new BufferedReader(new InputStreamReader(procRoute.getInputStream()));
                 BufferedReader stdError = new BufferedReader(new InputStreamReader(procRoute.getErrorStream()));
 
@@ -127,18 +127,16 @@ public class Main extends JFrame implements ActionListener {
                     log.error(line);
                 }
 
-                String unitIp = getAvailableIp(ip);
+                String newIp = getAvailableIp(ip);
 
-                if (unitIp == null)
+                if (newIp == null)
                     throw new NullPointerException();
 
-                //unitIp = "83.48.10.67";
-                String command = "/Z" + "1234" + "z1638=00" + "OF&";
-                sendRelayCommand(unitIp, "80", command);
+                sendTCPCommand(DEFAULT_SURELINE_IP, "80", newIp, "80", mask, gateway);
 
                 this.btnSetIp.setVisible(false);
 
-                this.txtIp = new JTextField(unitIp);
+                this.txtIp = new JTextField(newIp);
                 this.txtIp.setBounds(550, 250, 150, 30);
                 this.txtIp.setForeground(Color.decode(COLOR_SUCCESS));
                 this.txtIp.setBackground(Color.WHITE);
@@ -149,9 +147,8 @@ public class Main extends JFrame implements ActionListener {
 
                 this.contentPane.add(this.txtIp);
 
-                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                    Desktop.getDesktop().browse(new URI("http://" + unitIp));
-                }
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE))
+                    Desktop.getDesktop().browse(new URI("http://" + newIp));
 
                 /*JOptionPane.showMessageDialog(contentPane, "Ip assigned successfully: " + unitIp,
                         "Success", JOptionPane.OK_OPTION, new ImageIcon(""));*/
@@ -171,19 +168,18 @@ public class Main extends JFrame implements ActionListener {
     }
 
     private String getAvailableIp(String localIp) throws IOException {
-        for (int i = Integer.parseInt(localIp.substring(localIp.lastIndexOf(".") + 1)) + 1; i < 256; i++) {
+        for (int i = Integer.parseInt(localIp.substring(localIp.lastIndexOf(".") + 1)) + 1; i < 255; i++) {
             String candidateIp = localIp.substring(0, localIp.lastIndexOf(".") + 1) + i;
-            if (!InetAddress.getByName(candidateIp).isReachable(5000)) {
+            if (!InetAddress.getByName(candidateIp).isReachable(1000))
                 return candidateIp;
-            }
         }
         return null;
     }
 
-    private void sendRelayCommand(String ip, String port, String command) throws UnitConnectionException {
+    private void sendTCPCommand(String ip, String port, String newIp, String newPort, String newMask, String newGateway) throws UnitConnectionException {
         try {
             RestTemplate restTemplate = new RestTemplate();
-            ResponseEntity<String> response = restTemplate.exchange("http://" + ip + ":" + port + command, HttpMethod.POST, new HttpEntity(new HttpHeaders()), String.class);
+            ResponseEntity<String> response = restTemplate.exchange("http://" + ip + ":" + port + "/Z1234z1680=IP:" + newIp + "&PORT:" + newPort + "&MASK:" + newMask + "&GATEWAY:" + newGateway + "&", HttpMethod.POST, new HttpEntity(new HttpHeaders()), String.class);
             int status = response.getStatusCode().value();
             if (status != 200)
                 throw new UnitConnectionException(status);
