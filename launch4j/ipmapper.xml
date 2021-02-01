@@ -3,14 +3,14 @@
   <dontWrapJar>false</dontWrapJar>
   <headerType>gui</headerType>
   <jar>C:\Users\alejandro\IdeaProjects\ipmapper\target\ipmapper-0.0.1-SNAPSHOT.jar</jar>
-  <outfile>C:\Users\alejandro\Desktop\ipmapper.exe</outfile>
+  <outfile>C:\Users\alejandro\Desktop\IpMapper.exe</outfile>
   <errTitle></errTitle>
   <cmdLine></cmdLine>
   <chdir>.</chdir>
   <priority>normal</priority>
   <downloadUrl>http://java.com/download</downloadUrl>
   <supportUrl></supportUrl>
-  <stayAlive>false</stayAlive>
+  <stayAlive>true</stayAlive>
   <restartOnCrash>true</restartOnCrash>
   <manifest>C:\Users\alejandro\IdeaProjects\ipmapper\launch4j\wrapper.manifest</manifest>
   <icon>C:\Users\alejandro\IdeaProjects\ipmapper\src\main\resources\static\icon.ico</icon>

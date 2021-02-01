@@ -34,7 +34,7 @@ public class Main extends JFrame implements ActionListener {
     public static final String DEFAULT_SURELINE_IP = "192.168.2.10";
 
     private JPanel contentPane;
-    private JLabel lbl1, lbl2, lbl3, lbl4, lblIp, lblFooter;
+    private JLabel lbl1, lbl2, lbl3, lbl4, lbl5, lblIp, lblFooter;
     private JLabel lblImg;
     private JButton btnSetIp;
     private JTextField txtIp;
@@ -62,24 +62,28 @@ public class Main extends JFrame implements ActionListener {
         this.contentPane.add(lblImg);
 
         this.lbl1 = new JLabel("1. Conecte la unidad sureline al router");
-        this.lbl1.setBounds(20, 250, 400, 30);
+        this.lbl1.setBounds(20, 250, 760, 30);
         this.contentPane.add(lbl1);
 
-        this.lbl2 = new JLabel("<html>2. Asegúrese de que su ordenador esté conectado a la misma red y haga clic en el botón \"SET LOCAL IP\"</html>");
+        this.lbl2 = new JLabel("2. (Opcional): Pulse el botón de reset durante 10 seg. para restablecer la configuración TCP/IP de fábrica");
         this.lbl2.setBounds(20, 300, 760, 30);
         this.contentPane.add(lbl2);
 
-        this.lbl3 = new JLabel("3. IMPORTANTE: Anótese la IP asignada");
-        this.lbl3.setBounds(20, 350, 400, 30);
+        this.lbl3 = new JLabel("<html>3. Asegúrese de que su ordenador esté conectado a la misma red y haga clic en el botón \"SET LOCAL IP\"</html>");
+        this.lbl3.setBounds(20, 350, 760, 30);
         this.contentPane.add(lbl3);
 
-        this.lbl4 = new JLabel("4. Visualice y gestione la unidad desde la IP asignada");
-        this.lbl4.setBounds(20, 400, 400, 30);
+        this.lbl4 = new JLabel("4. IMPORTANTE: Anótese la IP asignada");
+        this.lbl4.setBounds(20, 400, 760, 30);
         this.contentPane.add(lbl4);
+
+        this.lbl5 = new JLabel("5. Visualice y gestione la unidad desde la IP asignada");
+        this.lbl5.setBounds(20, 450, 760, 30);
+        this.contentPane.add(lbl5);
 
         this.lblIp = new JLabel("ASSIGNED IP:");
         this.lblIp.setForeground(Color.decode(COLOR_SUCCESS));
-        this.lblIp.setBounds(460, 250, 80, 30);
+        this.lblIp.setBounds(450, 250, 90, 30);
         this.lblIp.setVisible(false);
         this.contentPane.add(lblIp);
 
@@ -133,6 +137,7 @@ public class Main extends JFrame implements ActionListener {
                     throw new NullPointerException();
 
                 sendTCPCommand(DEFAULT_SURELINE_IP, "80", newIp, "80", mask, gateway);
+                sendIndexCommand(newIp, "80");
 
                 this.btnSetIp.setVisible(false);
 
@@ -170,7 +175,7 @@ public class Main extends JFrame implements ActionListener {
     private String getAvailableIp(String localIp) throws IOException {
         for (int i = Integer.parseInt(localIp.substring(localIp.lastIndexOf(".") + 1)) + 1; i < 255; i++) {
             String candidateIp = localIp.substring(0, localIp.lastIndexOf(".") + 1) + i;
-            if (!InetAddress.getByName(candidateIp).isReachable(1000))
+            if (!InetAddress.getByName(candidateIp).isReachable(200))
                 return candidateIp;
         }
         return null;
@@ -178,14 +183,29 @@ public class Main extends JFrame implements ActionListener {
 
     private void sendTCPCommand(String ip, String port, String newIp, String newPort, String newMask, String newGateway) throws UnitConnectionException {
         try {
-            RestTemplate restTemplate = new RestTemplate();
+            RestTemplate restTemplate = new RestTemplate(getClientHttpRequestFactory());
             ResponseEntity<String> response = restTemplate.exchange("http://" + ip + ":" + port + "/Z1234z1680=IP:" + newIp + "&PORT:" + newPort + "&MASK:" + newMask + "&GATEWAY:" + newGateway + "&", HttpMethod.POST, new HttpEntity(new HttpHeaders()), String.class);
             int status = response.getStatusCode().value();
             if (status != 200)
                 throw new UnitConnectionException(status);
         } catch (ResourceAccessException e){ //timeout has produced
-            //throw new UnitConnectionException(408);
-            //OK solo en equipos antiguos que no sean de la caixa ya que no deulven respuesta
+            //throw new UnitConnectionException(408); //Comentado ya que la unidad retorna 200 desde la nueva IP por tanto siempre se produce el timeout
+        } catch (UnitConnectionException e){
+            throw new UnitConnectionException(e.getStatus());
+        } catch (Exception e){
+            throw new UnitConnectionException(404);
+        }
+    }
+
+    private void sendIndexCommand(String ip, String port) throws UnitConnectionException {
+        try {
+            RestTemplate restTemplate = new RestTemplate(getClientHttpRequestFactory());
+            ResponseEntity<String> response = restTemplate.exchange("http://" + ip + ":" + port, HttpMethod.GET, new HttpEntity(new HttpHeaders()), String.class);
+            int status = response.getStatusCode().value();
+            if (status != 200)
+                throw new UnitConnectionException(status);
+        } catch (ResourceAccessException e){ //timeout has produced
+            throw new UnitConnectionException(408);
         } catch (UnitConnectionException e){
             throw new UnitConnectionException(e.getStatus());
         } catch (Exception e){
@@ -194,7 +214,7 @@ public class Main extends JFrame implements ActionListener {
     }
 
     private ClientHttpRequestFactory getClientHttpRequestFactory() { //needs org.apache.httpcomponents dependency in pom
-        int timeout = 5000;
+        int timeout = 1000;
         HttpComponentsClientHttpRequestFactory clientHttpRequestFactory
                 = new HttpComponentsClientHttpRequestFactory();
         clientHttpRequestFactory.setConnectTimeout(timeout);
