@@ -30,6 +30,7 @@ import java.time.LocalDate;
 public class Main extends JFrame implements ActionListener {
 
     public static final String COLOR_SECONDARY = "#888888";
+    public static final String COLOR_PRIMARY = "#007aff";
     public static final String COLOR_SUCCESS = "#5fa125";
     public static final String DEFAULT_SURELINE_IP = "192.168.2.10";
 
@@ -91,7 +92,7 @@ public class Main extends JFrame implements ActionListener {
         this.btnSetIp.addActionListener(this);
         this.btnSetIp.setBounds(550, 250, 150, 30);
         this.btnSetIp.setForeground(Color.white);
-        this.btnSetIp.setBackground(Color.decode(COLOR_SECONDARY));
+        this.btnSetIp.setBackground(Color.decode(COLOR_PRIMARY));
         this.btnSetIp.setBorderPainted(false);
         this.btnSetIp.setFocusPainted(false);
         this.contentPane.add(this.btnSetIp);
@@ -137,7 +138,6 @@ public class Main extends JFrame implements ActionListener {
                     throw new NullPointerException();
 
                 sendTCPCommand(DEFAULT_SURELINE_IP, "80", newIp, "80", mask, gateway);
-                sendIndexCommand(newIp, "80");
 
                 this.btnSetIp.setVisible(false);
 
@@ -151,6 +151,8 @@ public class Main extends JFrame implements ActionListener {
                 this.lblIp.setVisible(true);
 
                 this.contentPane.add(this.txtIp);
+
+                wait(1500);
 
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE))
                     Desktop.getDesktop().browse(new URI("http://" + newIp));
@@ -175,7 +177,7 @@ public class Main extends JFrame implements ActionListener {
     private String getAvailableIp(String localIp) throws IOException {
         for (int i = Integer.parseInt(localIp.substring(localIp.lastIndexOf(".") + 1)) + 1; i < 255; i++) {
             String candidateIp = localIp.substring(0, localIp.lastIndexOf(".") + 1) + i;
-            if (!InetAddress.getByName(candidateIp).isReachable(200))
+            if (!InetAddress.getByName(candidateIp).isReachable(500))
                 return candidateIp;
         }
         return null;
@@ -189,7 +191,7 @@ public class Main extends JFrame implements ActionListener {
             if (status != 200)
                 throw new UnitConnectionException(status);
         } catch (ResourceAccessException e){ //timeout has produced
-            //throw new UnitConnectionException(408); //Comentado ya que la unidad retorna 200 desde la nueva IP por tanto siempre se produce el timeout
+            throw new UnitConnectionException(408); //Comentado ya que la unidad retorna 200 desde la nueva IP por tanto siempre se produce el timeout
         } catch (UnitConnectionException e){
             throw new UnitConnectionException(e.getStatus());
         } catch (Exception e){
@@ -197,24 +199,16 @@ public class Main extends JFrame implements ActionListener {
         }
     }
 
-    private void sendIndexCommand(String ip, String port) throws UnitConnectionException {
+    private void wait(int ms) {
         try {
-            RestTemplate restTemplate = new RestTemplate(getClientHttpRequestFactory());
-            ResponseEntity<String> response = restTemplate.exchange("http://" + ip + ":" + port, HttpMethod.GET, new HttpEntity(new HttpHeaders()), String.class);
-            int status = response.getStatusCode().value();
-            if (status != 200)
-                throw new UnitConnectionException(status);
-        } catch (ResourceAccessException e){ //timeout has produced
-            throw new UnitConnectionException(408);
-        } catch (UnitConnectionException e){
-            throw new UnitConnectionException(e.getStatus());
-        } catch (Exception e){
-            throw new UnitConnectionException(404);
+            Thread.sleep(ms);
+        } catch(InterruptedException ex) {
+            Thread.currentThread().interrupt();
         }
     }
 
     private ClientHttpRequestFactory getClientHttpRequestFactory() { //needs org.apache.httpcomponents dependency in pom
-        int timeout = 1000;
+        int timeout = 3000;
         HttpComponentsClientHttpRequestFactory clientHttpRequestFactory
                 = new HttpComponentsClientHttpRequestFactory();
         clientHttpRequestFactory.setConnectTimeout(timeout);
